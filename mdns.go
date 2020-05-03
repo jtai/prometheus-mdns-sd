@@ -197,20 +197,26 @@ func (dd *Discovery) refresh(ctx context.Context, name string, ch chan<- *Target
 				return nil
 			}
 
+			// Set model.SchemeLabel to 'http' or 'https'
+			var schemaLabel string
+			if strings.Contains(response.Name, "_prometheus-https._tcp") {
+				schemaLabel = "https"
+			} else if strings.Contains(response.Name, "_prometheus-http._tcp") {
+				schemaLabel = "http"
+			} else {
+				// Ignore unsolicited mdns response
+				return nil
+			}
+
 			// Make a new targetGroup with one address-label for each thing we scape
 			//
 			// Check https://github.com/prometheus/common/blob/master/model/labels.go for possible labels.
 			tg := &TargetGroup{
 				Labels: map[string]string{
 					model.InstanceLabel: strings.TrimRight(response.Host, "."),
-					model.SchemeLabel:   "http",
+					model.SchemeLabel:   schemaLabel,
 				},
 				Targets: []string{fmt.Sprintf("%s:%d", response.Host, response.Port)},
-			}
-
-			// Set model.SchemeLabel to 'http' or 'https'
-			if strings.Contains(response.Name, "_prometheus-https._tcp") {
-				tg.Labels[model.SchemeLabel] = "https"
 			}
 
 			// Parse InfoFields and set path as model.MetricsPathLabel if it's
